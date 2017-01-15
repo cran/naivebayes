@@ -1,6 +1,7 @@
-b0d741beaa752eefbc0fc48e1ba1c7aa *DESCRIPTION
+73f0882eabb72437e29a37556d913626 *DESCRIPTION
 1c6f60d2f81efc6d54ffc763c723028c *NAMESPACE
-0374feaca39669506f3ff2e017cb856c *R/naive_bayes.R
+6c978bd17c09e17aaaa4712ca90ca7e6 *R/naive_bayes.R
+f21b8a7ba8d9708111f2a92622b5959d *inst/NEWS.Rd
 cb6c150706b057b5e6b8149f49bc006d *man/naive_bayes.Rd
 a2234e4fe82275fa0340c27cee03e269 *man/plot.naive_bayes.Rd
 559049199abb6066e04e048e7edb3538 *man/predict.naive_bayes.Rd

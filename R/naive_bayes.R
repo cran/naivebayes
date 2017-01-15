@@ -109,14 +109,10 @@ predict.naive_bayes <- function(object, newdata = NULL, type = c("class", "prob"
                 p <- sapply(seq_along(lev), function(z) {
                     stats::dnorm(V, tab[1, z], s[z])
                 })
-
                 p[p == 0] <- threshold
-
                 if (na[var]) p[is.na(p)] <- 1
-
                 log_sum <- log_sum + log(p)
             }
-
         } else {
             tab <- tables[[var]]
             if (class(V) == "logical") V <- as.character(V)
@@ -146,7 +142,9 @@ predict.naive_bayes <- function(object, newdata = NULL, type = c("class", "prob"
             post <- sapply(lik, function(prob) {
                 prob / sum(lik)
             })
-            return(t(as.matrix(post)))
+            mat <- t(as.matrix(post))
+            colnames(mat) <- lev
+            return(mat)
         } else {
             lik <- exp(t(t(log_sum) + log(prior)))
             dimnames(lik) <- NULL
