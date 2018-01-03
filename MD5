@@ -1,7 +1,13 @@
-73f0882eabb72437e29a37556d913626 *DESCRIPTION
+10ec71897889c18d3da4efeaa6c57340 *DESCRIPTION
 1c6f60d2f81efc6d54ffc763c723028c *NAMESPACE
-6c978bd17c09e17aaaa4712ca90ca7e6 *R/naive_bayes.R
-f21b8a7ba8d9708111f2a92622b5959d *inst/NEWS.Rd
+95d5ae431b8cd3858ef85cdb4cf8c20b *R/naive_bayes.R
+8688e2d4bd059f1d61d42471761979fc *R/naive_bayes.default.R
+82be186e08675dd80b47b4e004f8b17b *R/naive_bayes.formula.R
+de1ac0012b3244fb9fed260f5d485fcb *R/plot.naive_bayes.R
+3fd497e3fa621b5e78815259f0d1d1af *R/predict.naive_bayes.R
+2ba385cab40fd925efa486a6d8007d62 *R/print.naive_bayes.R
+cebf3a53840f2ecc049cc931b8be988f *R/tables.R
+ef3e31c1fc066029178f4af79a20ca0e *inst/NEWS.Rd
 cb6c150706b057b5e6b8149f49bc006d *man/naive_bayes.Rd
 a2234e4fe82275fa0340c27cee03e269 *man/plot.naive_bayes.Rd
 559049199abb6066e04e048e7edb3538 *man/predict.naive_bayes.Rd
