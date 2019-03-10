@@ -62,11 +62,12 @@ plot(nb_kernel)
 \dontrun{
 vars <- 10
 rows <- 500000
-y <- sample(c("a", "b"), rows, TRUE)
+y <- sample(letters[1:2], rows, TRUE)
 
 # Only categorical variables
 X1 <- as.data.frame(matrix(sample(letters[5:9], vars * rows, TRUE),
                            ncol = vars))
+format(object.size(X1), "Mb")
 nb_cat <- naive_bayes(x = X1, y = y)
 nb_cat
 system.time(pred2 <- predict(nb_cat, X1))
