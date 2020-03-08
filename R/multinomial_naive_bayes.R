@@ -1,26 +1,31 @@
+
 multinomial_naive_bayes <- function (x, y, prior = NULL, laplace = 0.5, ...)  {
 
     if (!is.factor(y) & !is.character(y) & !is.logical(y))
-        stop("multinomial_naive_bayes(): y has to be either a factor or character or logical vector", call. = FALSE)
+        stop("multinomial_naive_bayes(): y must be either a factor or character or logical vector", call. = FALSE)
     if (!is.factor(y))
         y <- factor(y)
     levels <- levels(y)
     nlev <- nlevels(y)
     vars <- colnames(x)
-    if (nlev < 2)
-        warning("multinomial_naive_bayes(): y has less than two classes. ", call. = FALSE)
-    if (is.null(vars)) {
-        xname <- deparse(substitute(x))
-        stop(paste0("multinomial_naive_bayes(): Column names in the matrix x are required.\n",
-                    "       Consider paste0(\"V\", 1:ncol(", xname, ")) as column names \n",
-                    "       in both train and test datasets."), call. = FALSE)
-    }
-    if (class(x)[1] != "matrix") {
-        stop("multinomial_naive_bayes(): x has to be a numeric matrix.", call. = FALSE)
+    class_x <- class(x)[1]
+    use_Matrix <- class_x %in% .matrix_classes
+    if (!is.matrix(x) & !use_Matrix) {
+        warning("multinomial_naive_bayes(): x was coerced to matrix.", call. = FALSE)
         x <- as.matrix(x)
         if (mode(x) != "numeric")
-            stop("multinomial_naive_bayes(): x has to contain numeric columns.", call. = FALSE)
+            stop("multinomial_naive_bayes(): x must be a matrix/dgCMatrix with integer columns.", call. = FALSE)
     }
+    if (use_Matrix) {
+        if (!"Matrix" %in% rownames(utils::installed.packages()))
+            stop("multinomial_naive_bayes(): please install \"Matrix\" package.")
+        if (class_x != "dgCMatrix")
+            stop("multinomial_naive_bayes(): dgCMatrix class from the Matrix package is only supported.", call. = FALSE)
+    }
+    if (nlev < 2)
+        stop("multinomial_naive_bayes(): y must contain at least two classes. ", call. = FALSE)
+    if (is.null(vars))
+        stop("multinomial_naive_bayes(): x must have unique column names.\n", call. = FALSE)
     NAy <- anyNA(y)
     NAx <- anyNA(x)
     if (NAy) {
@@ -29,7 +34,7 @@ multinomial_naive_bayes <- function (x, y, prior = NULL, laplace = 0.5, ...)  {
         warning(paste0("multinomial_naive_bayes(): y contains ", len_na, " missing",
                        ifelse(len_na == 1, " value", " values"), ". ",
                        ifelse(len_na == 1, "It is", "They are"),
-                       " not included (together with the corresponding instances in x) ",
+                       " not included (also the corresponding rows in x) ",
                        "into the estimation process."), call. = FALSE)
         y <- y[!na_y_bool]
         x <- x[!na_y_bool, ]
@@ -46,24 +51,30 @@ multinomial_naive_bayes <- function (x, y, prior = NULL, laplace = 0.5, ...)  {
     if (any(y_counts == 0))
         stop(paste0("multinomial_naive_bayes(): y variable has to contain",
                     " at least one observation per class for estimation process."),
-                    call. = FALSE)
+             call. = FALSE)
     y_counts <- stats::setNames(y_counts, levels)
     if (is.null(prior)) {
         prior <- prop.table(y_counts)
     } else {
         if (length(prior) != nlev)
-            stop(paste0("multinomial_naive_bayes(): Vector with prior probabilities should have ",
+            stop(paste0("multinomial_naive_bayes(): vector with prior probabilities should have ",
                         nlev, " entries"))
         prior <- stats::setNames(prior / sum(prior), levels)
     }
-
-    params <- rowsum(x, y, na.rm = TRUE) + laplace
-    params <- params / rowSums(params)
-
+    if (use_Matrix) {
+        params <- lapply(levels, function(lev) {
+            Matrix::colSums(x[y == lev, , drop = FALSE], na.rm = TRUE) + laplace })
+        params <- do.call("rbind", params)
+        params <- params / rowSums(params)
+        rownames(params) <- levels
+    } else {
+        params <- rowsum.default(x, y, na.rm = TRUE) + laplace
+        params <- params / rowSums(params)
+    }
     if (any(params == 0)) {
         ind_zero <- which(params == 0, arr.ind = TRUE)
         nempty <- length(ind_zero[ ,2])
-        warning(paste0("multinomial_naive_bayes(): There ", ifelse(nempty == 1, "is ", "are "),
+        warning(paste0("multinomial_naive_bayes(): there ", ifelse(nempty == 1, "is ", "are "),
                        nempty, " empty ", ifelse(nempty == 1, "cell ", "cells "),
                        "leading to zero estimates. Consider Laplace smoothing."), call. = FALSE)
     }
@@ -76,10 +87,14 @@ predict.multinomial_naive_bayes <- function (object, newdata = NULL, type = c("c
 
     if (is.null(newdata))
         newdata <- object$data$x
-    if (!is.matrix(newdata))
-        stop("predict.multinomial_naive_bayes(): \"newdata\" has to be a numeric matrix with at least one row and two columns.", call. = FALSE)
-    if (mode(newdata) != "numeric")
-        stop("predict.multinomial_naive_bayes(): \"newdata\" has to be a numeric matrix.", call. = FALSE)
+    class_x <- class(newdata)[1]
+    use_Matrix <- class_x == "dgCMatrix"
+    if (!is.matrix(newdata) & !use_Matrix)
+        stop("predict.multinomial_naive_bayes(): newdata must be a numeric matrix or dgCMatrix (Matrix package) with at least one row and two named columns.", call. = FALSE)
+    if (is.matrix(newdata) & mode(newdata) != "numeric")
+        stop("predict.multinomial_naive_bayes(): newdata must be a numeric matrix.", call. = FALSE)
+    if (use_Matrix & !"Matrix" %in% rownames(utils::installed.packages()))
+        stop("predict.multinomial_naive_bayes(): please install Matrix package", call. = FALSE)
 
     type <- match.arg(type)
     lev <- object$levels
@@ -95,50 +110,36 @@ predict.multinomial_naive_bayes <- function (object, newdata = NULL, type = c("c
     n_features_newdata <- ncol(newdata)
 
     if (n_features == 0) {
+        warning(paste0("predict.multinomial_naive_bayes(): no feature in newdata corresponds to ",
+                       "features defined in the object. Classification is based on prior probabilities."), call. = FALSE)
         if (type == "class") {
-            warning(paste0("predict.multinomial_naive_bayes(): ",
-                           "No feature in the newdata corresponds to ",
-                           "probability tables in the object. ",
-                           "Classification is done based on the prior probabilities"), call. = FALSE)
-            return(factor(rep(lev[which.max(prior)], n_obs),
-                          levels = lev))
+            return(factor(rep(lev[which.max(prior)], n_obs), levels = lev))
         } else {
-            warning(paste0("predict.multinomial_naive_bayes(): ",
-                           "No feature in the newdata corresponds to ",
-                           "probability tables in the object. ",
-                           "Posterior probabilities are equal to prior probabilities."), call. = FALSE)
-            return(matrix(prior, ncol = n_lev, nrow = n_obs,
-                          byrow = TRUE, dimnames = list(NULL, lev)))
+            return(matrix(prior, ncol = n_lev, nrow = n_obs, byrow = TRUE, dimnames = list(NULL, lev)))
         }
     }
     if (n_features < n_tables) {
-        warning(paste0("predict.multinomial_naive_bayes(): Only ", n_features, " feature(s) out of ", n_tables,
-                       " defined in the naive_bayes object \"", substitute(object),
-                       "\" are used for prediction\n"), call. = FALSE)
+        warning(paste0("predict.multinomial_naive_bayes(): only ", n_features, " feature(s) in newdata could be matched ",
+                       "with ", n_tables, " feature(s) defined in the object."), call. = FALSE)
     }
     if (n_features_newdata > n_features) {
-        warning(paste0("predict.multinomial_naive_bayes(): ",
-                       "More features in the newdata are provided ",
-                       "as there are parameter estimates in the object. ",
-                       "Calculation is performed based on features to be found in the object."), call. = FALSE)
+        warning(paste0("predict.multinomial_naive_bayes(): newdata contains feature(s) that could not be matched ",
+                        "with (", n_features, ") feature(s) defined in the object. Only matching features are used for calculation."), call. = FALSE)
         newdata <- newdata[ ,features, drop = FALSE]
     }
     NAx <- anyNA(newdata)
     if (NAx) {
-        ind_na <- which(is.na(newdata))
+        ind_na <- if (use_Matrix) Matrix::which(is.na(newdata)) else which(is.na(newdata))
         len_na <- length(ind_na)
-        if (len_na > 0)
-            warning(paste0("predict.multinomial_naive_bayes(): ", len_na, " missing",
-                           ifelse(len_na == 1, " value", " values"),
-                           " discovered in the newdata. ",
-                           ifelse(len_na == 1, "It is", "They are"),
-                           " not included into the calculation."),
-                    call. = FALSE)
+        warning("predict.multinomial_naive_bayes(): ", len_na, " missing", ifelse(len_na == 1, " value", " values"),
+                " discovered in the newdata. ", ifelse(len_na == 1, "It is", "They are"),
+                " not included in calculation.", call. = FALSE)
         newdata[ind_na] <- 0
     }
     # if (object$laplace == 0)
     #     params[params <= 0] <- 0.001
-    post <- tcrossprod(newdata, log(params))
+
+    post <- if (use_Matrix) Matrix::tcrossprod(newdata, log(params)) else tcrossprod(newdata, log(params))
 
     for (ith_class in seq_along(lev)) {
         post[ ,ith_class] <- post[ ,ith_class] + log(prior[ith_class])
@@ -159,7 +160,7 @@ predict.multinomial_naive_bayes <- function (object, newdata = NULL, type = c("c
         }
         else {
             colnames(post) <- lev
-            return(apply(post, 2, function(x) { 1 / rowSums(exp(post - x)) }))
+            return(apply(post, 2, function(x) { 1 / if (use_Matrix) Matrix::rowSums(exp(post - x)) else rowSums(exp(post - x)) }))
         }
     }
 }

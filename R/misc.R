@@ -14,7 +14,7 @@
 
     rule <- paste0(rep("=", getOption("width")), collapse = "")
     packageStartupMessage(rule)
-    packageStartupMessage(" ::: Thank you for using the naivebayes package!")
+    packageStartupMessage("::: Thank you for using the naivebayes package!")
     packageStartupMessage(rule)
 }
 
@@ -26,6 +26,11 @@ models <- function() {
     "Multinomial Naive Bayes"    = "multinomial_naive_bayes",
     "Non parametric Naive Bayes" = "nonparametric_naive_bayes")
 }
+
+.matrix_classes <- c("dgTMatrix", "dgCMatrix", "dsCMatrix", "dtCMatrix",
+                     "dgeMatrix", "dsyMatrix", "dspMatrix", "dtrMatrix",
+                     "dtpMatrix", "dpoMatrix", "dppMatrix", "dsRMatrix")
+
 
 `%class%` <- function(lhs, rhs) {
   c1 <- class(lhs)[1]

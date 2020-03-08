@@ -51,7 +51,7 @@ get_cond_dist(nb)
 ## ------------------------------------------------------------------------
 vars <- 10
 rows <- 1000000
-y <- sample(c("a", "b"), rows, TRUE)
+y <- sample(x = c("a", "b"), size =  rows, replace = TRUE)
 
 # Discrete features
 X1 <- as.data.frame(matrix(sample(letters[5:9], vars * rows, TRUE),
